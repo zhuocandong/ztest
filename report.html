@@ -7073,7 +7073,7 @@
                     <table class="table table-bordered">
                         <thead>
                         <tr>
-                            <th>编号</th><th>测试类</th><th>测试方法</th><!--th>用例描述</th--><th>耗时</th><th>结果</th><!--th>操作</th-->
+                            <th>编号</th><th>测试类</th><th>测试方法</th><!--th>用例描述</th--><th>耗时</th><th>结果</th><th>原因</th>
                         </tr>
                         </thead>
                         <tbody id="detailBody">
@@ -7159,6 +7159,53 @@
         $(obj).attr("style","font-family: Consolas; background-color: #b0d877");
     }
 
+    //展开测试用例失败原因
+    function detail_cause(obj){
+        if ($(obj).text() == '展开') {
+            var len = $(obj).parent().parent().children().length;
+            var cause = JSONObject[parseInt($(obj).attr("suiteIndex"))]["test_case"][parseInt($(obj).attr("caseIndex"))][($(obj).attr("module"))];
+            !cause?cause="":cause;
+            console.log(cause);
+            switch(cause){
+                case "mtest run suite fork() failed":
+                    cause = "创建子进程失败";
+                    break;
+                case "mtest run suite waitpid() failed":
+                    cause = "等待子进程退出失败";
+                    break;
+                case "mtest run case killed by signal":
+                    cause = "信号中断";
+                    break;
+                case "mtest run case returned -1":
+                    cause = "测试函数返回值为-1";
+                    break;
+                case "mtest run case memory leaked":
+                    cause = "内存泄漏";
+                    break;
+                case "mtest run case socket opened":
+                    cause = "存在未关闭的套接字";
+                    break;
+                default:
+                    if (cause.indexOf("mtest run case killed by signal") != -1 ){
+                        cause = "信号中断：" + cause.replace(/[^0-9]/ig,"") + "（代号）";
+                    }
+                    else
+                        cause = "未知";
+                    break;
+            }
+            $(obj).text("收缩");
+            $(obj).removeClass("btn-primary");
+            $(obj).addClass("btn-danger");
+            $(obj).parent().parent().after("<tr><td colspan='" + len + "'><div class='text-danger' style='font-family: Consolas;font-size:18px'>" + cause + "</div></td></tr>");
+        } 
+        else if ($(obj).text() == '收缩') {
+            $(obj).parent().parent().next().remove();
+            $(obj).text("展开");
+            $(obj).removeClass("btn-danger");
+            $(obj).addClass("btn-primary");
+        }
+    }
+
 //拓展操作：展开log
    /* function details(obj) {
         if ($(obj).text() == '展开') {
@@ -7225,8 +7272,8 @@
             var filterOk = 0;
             var filterFail = 0;
             var filterSkip = 0;
-            $.each(JSONObject, function (i, n) {
-                $.each(n["test_case"], function (i, n) {
+            $.each(JSONObject, function (i_suite, n_suite) {
+                $.each(n_suite["test_case"], function (i, n) {
                     if ((className == "" || n["className"] == className) && (caseResult == "" || n["result"] == caseResult)) {
                         filterAll += 1;
                         var status = "";
@@ -7250,6 +7297,18 @@
                             "<td>" + n["time"] + "ms" + "</td>" +
                             status + 
                             /*"<td><button type='button' onclick='details(this)' buttonIndex='" + i + "' class='btn btn-primary btn-xs' style='margin-bottom: 0px'>展开</button></td></tr>"*/    //拓展：展开log
+                            +"</tr>"
+                        if (n["result"] == 'failure')
+                        tr = "<tr style='font-family: Consolas'>" +
+                            "<td>" + (i + 1) + "</td>" +
+                            "<td>" + n["className"] + "</td>" +
+                            "<td>" + n["name"] + "</td>" +
+                            //"<td>" + n["description"] + "</td>" +     //拓展：添加每个用例的描述
+                            "<td>" + n["time"] + "ms" + "</td>" +
+                            status + 
+                            //拓展：展开失败原因，需要2个索引(suite、case)和模块字段"cause"作参数
+                            "<td><button type='button' onclick='detail_cause(this)' caseIndex='" + i + "' suiteIndex='"
+                                 + i_suite + "' module='cause' class='btn btn-primary btn-xs' style='margin-bottom: 0px'>展开</button></td></tr>"
                             +"</tr>"
                         $("#detailBody").append(tr);
                     }
